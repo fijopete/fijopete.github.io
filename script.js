@@ -6,11 +6,13 @@
     var repoName = "practice";
 
     //creating cards.
-    const headers = { Authorization: `token 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` };
+    //const headers = { Authorization: `token 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` };
 
-    fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents`, {
-      headers
-    })
+    fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents`
+    //       , {
+    //   headers
+    // }
+         )
       .then((response) => response.json())
       .then((data) => {
 
@@ -53,9 +55,11 @@
 
         async function downloadFolderContent(repoOwner, repoName, folderPath, currentFolderPath = '') {
           // Fetch contents of the folder from GitHub API
-          const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${folderPath}`, {
-            headers
-          });
+          const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${folderPath}`
+          //                              , {
+          //   headers
+          // }
+                                      );
           const contents = await response.json();
        
           // Loop through each item in the folder
