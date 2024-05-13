@@ -1,21 +1,20 @@
-   //Retrieve data from a specific repository and dynamically generate a download card based on that information
-   
-   
     //Repo details
     var repoOwner = "fijopete";
     var repoName = "practice";
 
-    //creating cards.
-    //const headers = { Authorization: `token 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` };
-
-    fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents`)
-      .then((response) => response.json())
-      .then((data) => {
-
-        const carouselContainer = document.querySelector(".carousel__container");
-
-        data
-          .filter((item) => item.type === "dir")
+    //To fetch folder names and create cards
+    async function createCards(repoOwner, repoName) {
+      try {
+        const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents`);
+   
+          if (!response.ok) {
+              throw new Error('Failed to fetch files');
+          }
+   
+          const contents = await response.json();
+          const carouselContainer = document.querySelector(".carousel__container");
+   
+          contents.filter((item) => item.type === "dir")
           .forEach((folder) => {
             const folderName = folder.name;
             const newItem = document.createElement("div");
@@ -33,7 +32,7 @@
             itemTitle.textContent = folderName;
             button.textContent = "Download";
             button.addEventListener("click", () =>
-              downloadFolderContent(repoOwner , repoName, folderName)
+              downloadAndZipFiles(repoOwner, repoName, folderName)
             );
 
             cardHover.appendChild(buttonContainer);
@@ -42,48 +41,57 @@
             newItem.appendChild(cardHover);
             carouselContainer.appendChild(newItem);
           });
-      })
-      .catch((error) =>
-        console.error("Error fetching repository contents:", error)
-      );
-
-
-
-        async function downloadFolderContent(repoOwner, repoName, folderPath, currentFolderPath = '') {
-          // Fetch contents of the folder from GitHub API
-          const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${folderPath}`);
-          const contents = await response.json();
-       
-          // Loop through each item in the folder
-          for (const item of contents) {
-              if (item.type === 'file') {
-                  // Download the file
-                  const fileUrl = item.download_url;
-                  const fileName = item.name; // Use the file name from GitHub
-                  const filePath = `${currentFolderPath}/${fileName}`;
-       
-                  const fileResponse = await fetch(fileUrl);
-                  const fileBlob = await fileResponse.blob();
-       
-                  // Create a Blob URL
-                  const blobUrl = URL.createObjectURL(fileBlob);
-       
-                  // Create a temporary link element
-                  const link = document.createElement('a');
-                  link.href = blobUrl;
-                  link.setAttribute('download', filePath);
-       
-                  // Simulate click to trigger download
-                  link.click();
-       
-                  // Clean up by revoking the Blob URL
-                  URL.revokeObjectURL(blobUrl);
-              } else if (item.type === 'dir') {
-                  // Create directory if it doesn't exist
-                const subfolderPath = `${currentFolderPath}/${item.name}`;
-                await downloadFolderContent(repoOwner, repoName, `${folderPath}/${item.name}`, subfolderPath);
-              }
-          }
+      } catch (error) {
+          console.error('Error:', error.message);
       }
-      
-      
+  }
+
+    //to download and make it to zip files
+    async function downloadAndZipFiles(repoOwner, repoName, folderPath) {
+        // Collect all file URLs
+        const fileUrls = await getAllFileUrls(repoOwner, repoName, folderPath);
+     
+        // Create a zip file
+        const zip = new JSZip();
+     
+        // Download each file and add it to the zip
+        await Promise.all(fileUrls.map(async (fileUrl) => {
+            const fileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1);
+            const fileResponse = await fetch(fileUrl);
+            const fileBlob = await fileResponse.blob();
+            zip.file(fileName, fileBlob);
+        }));
+     
+        // Generate the zip file
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+     
+        // Create a link element
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(zipBlob);
+        link.setAttribute('download', `${folderPath.replace(/\//g, '-')}.zip`);
+     
+        // Simulate click to trigger download
+    link.click();
+    }
+    
+    //to get all file urls for download
+    async function getAllFileUrls(repoOwner, repoName, folderPath) {
+        const fileUrls = [];
+     
+        const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/contents/${folderPath}`);
+        const contents = await response.json();
+     
+            for (const item of contents) {
+                if (item.type === 'file') {
+                    fileUrls.push(item.download_url);
+                } else if (item.type === 'dir') {
+                  alert("An issue has been detected with the structure of the data folder, hence, downloading is currently not possible! ");
+                  fileUrls = [];
+                  break;
+                }
+            }
+
+        return fileUrls;
+    }
+ 
+    createCards(repoOwner,repoName);
